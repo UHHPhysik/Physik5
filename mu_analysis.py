@@ -85,6 +85,23 @@ class LorentzVector(object):
 		return LorentzVector(q=self.q - other.q, E=self.E - other.E,
 			px=self.px - other.px, py=self.py - other.py, pz=self.pz - other.pz)
 
+	def in_cms_of(self, ref):
+		if ref.p2 < _EPSILON:
+			return self
+		lv_ref_prod = self * ref
+		boost_scale = (ref.E / ref.m * lv_ref_prod - self.E * ref.m - lv_ref_prod + self.E*ref.E) / ref.p2
+		return LorentzVector(E=lv_ref_prod / ref.m,
+			px=self.px - ref.px * boost_scale,
+			py=self.py - ref.py * boost_scale,
+			pz=self.pz - ref.pz * boost_scale,
+		)
+
+
+def cm_boost(ref, *args):
+	result = []
+	for lv in [ref] + list(args):
+		result.append(lv.in_cms_of(ref))
+	return result
 
 
 def read_events(fn_list, hlt_name = 'HLT_Mu30'):
@@ -102,6 +119,12 @@ def read_events(fn_list, hlt_name = 'HLT_Mu30'):
 
 	
 if __name__ == '__main__':
+	p1 = LorentzVector(pt=23, eta=0.42, phi=2.3, m=4.2)
+	p2 = LorentzVector(pt=42, eta=-0.23, phi=0.42, m=0.23)
+	q1, q2 = cm_boost(p1, p2)
+	sys.stdout.write('%s -> %s\n' % (p1, q1))
+	sys.stdout.write('%s -> %s\n' % (p2, q2))
+
 	import matplotlib.pyplot as plt
 	data_pt = []
 	for muon_list in read_events(['mu_data_nmin2_nmax4_part1.json'], 'HLT_Mu30'):
