@@ -104,20 +104,32 @@ def cm_boost(ref, *args):
 	return result
 
 
-def read_events(fn_list, hlt_name = 'HLT_Mu30'):
-	for fn in fn_list:
-		with open(fn) as fp:
-			sys.stdout.write('Loading ... %s\n' % fn)
-			collision_data = json.load(fp)
-			sys.stdout.write('Available Trigger: %s\n' % str.join(', ', collision_data['metadata']['trigger']))
-			hlt_mask = (1 << collision_data['metadata']['trigger'].index(hlt_name))
-			for event in collision_data['events']:
-				(hlt_bits, muon_list) = event
-				if hlt_bits & hlt_mask:
-					yield [LorentzVector(pt=pt, eta=eta, phi=phi, m=0.105658, charge=charge) for (charge,pt,eta,phi) in muon_list]
-	sys.stdout.write('Finished processing!')
+def read_collision_data(fn, cache):
+	if fn in read_collision_data.cache:
+		return read_collision_data.cache[fn]
+	with open(fn) as fp:
+		sys.stdout.write('Loading ...\n')
+		collision_data = json.load(fp)
+		if cache:
+			read_collision_data.cache[fn] = collision_data
+		return collision_data
+read_collision_data.cache = {}
 
-	
+
+def read_events(fn_list, hlt_name='HLT_Mu30', cache=False):
+	for fn in fn_list:
+		sys.stdout.write('Processing file %s\n' % fn)
+		collision_data = read_collision_data(fn, cache)
+		sys.stdout.write('Available Trigger: %s\n' % str.join(', ', collision_data['metadata']['trigger']))
+		hlt_mask = (1 << collision_data['metadata']['trigger'].index(hlt_name))
+		sys.stdout.write('Iterating %d events ...\n' % len(collision_data['events']))
+		for event in collision_data['events']:
+			(hlt_bits, muon_list) = event
+			if hlt_bits & hlt_mask:
+				yield [LorentzVector(pt=pt, eta=eta, phi=phi, m=0.105658, q=q) for (q,pt,eta,phi) in muon_list]
+	sys.stdout.write('Finished processing!\n')
+
+
 if __name__ == '__main__':
 	p1 = LorentzVector(pt=23, eta=0.42, phi=2.3, m=4.2)
 	p2 = LorentzVector(pt=42, eta=-0.23, phi=0.42, m=0.23)
@@ -127,7 +139,9 @@ if __name__ == '__main__':
 
 	import matplotlib.pyplot as plt
 	data_pt = []
-	for muon_list in read_events(['mu_data_nmin2_nmax4_part1.json'], 'HLT_Mu30'):
+	for muon_list in read_events(['mu_data_nmin2_nmax4_part1.json'], 'HLT_Mu30', cache=True):
+		data_pt.append(muon_list[0].pt)
+	for muon_list in read_events(['mu_data_nmin2_nmax4_part1.json'], 'HLT_Mu30', cache=True):
 		data_pt.append(muon_list[0].pt)
 	plt.hist(data_pt, bins=50, range=(0, 170), log=True)
 	plt.savefig('mu_spec.png')
