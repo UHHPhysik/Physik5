@@ -25,10 +25,21 @@ def _calc_y(pz, E):
 
 
 class LorentzVector(object):
+	"""
+		This LorentzVector can be created with the arguments:
+			(pt, eta, phi, m)
+			(pt, eta, phi, E)
+			(px, py, pz, m)
+			(px, py, pz, E)
+	"""
 	def __init__(self, pt=None, eta=None, phi=None, m=None, E=None, px=None, py=None, pz=None, q=0):
 		self.q = q
 		if E is None:
-			self.E = (pt**2 * math.cosh(eta)**2 + m**2)**0.5
+			if None not in (px, py, pz):
+				p2 = px**2 + py**2 + pz**2
+			else:
+				p2 = pt**2 * math.cosh(eta)**2
+			self.E = (p2 + m**2)**0.5
 		else:
 			self.E = float(E)
 		if px is None:
