@@ -1,4 +1,5 @@
 WinPython-*
+.ipynb_checkpoints
 *.json
 *.png
 *.pyc
